@@ -87,13 +87,9 @@ async def send_telegram_message(articles):
 if __name__ == "__main__":
     articles = fetch_latest_articles()
     if articles:
-        latest_article = articles[0]
-        print(f"ID: {latest_article['id']}, Title: {latest_article['title']}, Author: {latest_article['author']}, "
-              f"Views: {latest_article['views']}, Comments: {latest_article['comments']}, Date: {latest_article['date']}")
-        asyncio.run(send_telegram_message(latest_article))
-        # for article in articles:
-        #     print(f"ID: {article['id']}, Title: {article['title']}, Author: {article['author']}, "
-        #           f"Views: {article['views']}, Comments: {article['comments']}, Date: {article['date']}")
-        # asyncio.run(send_telegram_message(articles))
+        for article in articles:
+            print(f"ID: {article['id']}, Title: {article['title']}, Author: {article['author']}, "
+                  f"Views: {article['views']}, Comments: {article['comments']}, Date: {article['date']}")
+        asyncio.run(send_telegram_message(articles))
     else:
         print("No articles found.")

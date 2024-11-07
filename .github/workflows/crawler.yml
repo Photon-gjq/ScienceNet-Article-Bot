@@ -5,8 +5,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: '0 14 * * *'  # 每天晚上10点运行一次。注意這裏的 cron 是 UTC 時間，北京時間要減去8小時。
-    - cron: '0 2 * * *'  # 每天早上10点运行一次。
+    - cron: '0 * * * *'  # 每小時執行一次
 
 jobs:
   run:

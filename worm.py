@@ -69,6 +69,8 @@ def send_telegram_message(articles):
     bot_token = os.getenv('BOT_TOKEN')
     chat_id = os.getenv('CHAT_ID')
     
+    print(f"Debug - BOT_TOKEN: {bot_token}, CHAT_ID: {chat_id}")
+
     bot = Bot(token=bot_token)
     for article in articles:
         message = f"New Article: {article['title']}\nAuthor: {article['author']}\nLink: {article['link']}"

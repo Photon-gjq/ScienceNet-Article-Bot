@@ -31,12 +31,12 @@ jobs:
       run: |
         python worm.py
 
-        - name: Commit and push changes
-        run: |
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git diff --quiet && git diff --staged --quiet || git add previous_articles.json
-          git commit -m "Update previous_articles.json" || echo "No changes to commit"
-          git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Commit and push changes
+      run: |
+        git config --local user.name "github-actions[bot]"
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git diff --quiet && git diff --staged --quiet || git add previous_articles.json
+        git commit -m "Update previous_articles.json" || echo "No changes to commit"
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

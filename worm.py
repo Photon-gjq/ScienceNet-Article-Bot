@@ -50,7 +50,7 @@ def fetch_latest_articles():
 
         # 假設鏈接在第二列的 <a> 標籤中
         link_tag = cols[1].find('a', href=True)
-        link = link_tag['href'] if link_tag else 'No link available'
+        link = f"https://blog.sciencenet.cn/{link_tag['href']}" if link_tag else 'No link available'
 
         # 將提取的信息添加到文章列表
         articles.append({
@@ -87,9 +87,13 @@ async def send_telegram_message(articles):
 if __name__ == "__main__":
     articles = fetch_latest_articles()
     if articles:
-        for article in articles:
-            print(f"ID: {article['id']}, Title: {article['title']}, Author: {article['author']}, "
-                  f"Views: {article['views']}, Comments: {article['comments']}, Date: {article['date']}")
-        asyncio.run(send_telegram_message(articles))
+        latest_article = articles[0]
+        print(f"ID: {latest_article['id']}, Title: {latest_article['title']}, Author: {latest_article['author']}, "
+              f"Views: {latest_article['views']}, Comments: {latest_article['comments']}, Date: {latest_article['date']}")
+        asyncio.run(send_telegram_message(latest_article))
+        # for article in articles:
+        #     print(f"ID: {article['id']}, Title: {article['title']}, Author: {article['author']}, "
+        #           f"Views: {article['views']}, Comments: {article['comments']}, Date: {article['date']}")
+        # asyncio.run(send_telegram_message(articles))
     else:
         print("No articles found.")

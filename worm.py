@@ -74,8 +74,9 @@ def send_telegram_message(articles):
         message = f"New Article: {article['title']}\nAuthor: {article['author']}\nLink: {article['link']}"
         try:
             bot.send_message(chat_id=chat_id, text=message)
+            print(f"Message sent: {message}")
         except Exception as e:
-            print(f"Failed to send message: {e}")
+            print(f"Failed to send message: {e}, BOT_TOKEN: {bot_token}, CHAT_ID: {chat_id}")
 
 # 主程序入口
 if __name__ == "__main__":

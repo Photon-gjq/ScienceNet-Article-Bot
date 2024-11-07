@@ -84,7 +84,7 @@ def save_current_articles(articles):
 def get_new_articles(current_articles, previous_article_ids):
     return [article for article in current_articles if article['id'] not in previous_article_ids]
 
-主程序入口
+#主程序入口
 if __name__ == "__main__":
     current_articles = fetch_latest_articles()
     previous_article_ids = load_previous_articles()

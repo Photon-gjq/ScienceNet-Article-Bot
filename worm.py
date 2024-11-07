@@ -85,15 +85,25 @@ def get_new_articles(current_articles, previous_article_ids):
     return [article for article in current_articles if article['id'] not in previous_article_ids]
 
 # 主程序入口
+# if __name__ == "__main__":
+#     current_articles = fetch_latest_articles()
+#     previous_article_ids = load_previous_articles()
+
+#     new_articles = get_new_articles(current_articles, previous_article_ids)
+    
+#     if new_articles:
+#         print(f"Found {len(new_articles)} new articles.")
+#         asyncio.run(send_telegram_message(new_articles))
+#         save_current_articles(current_articles)
+#     else:
+#         print("No new articles found.")
+
 if __name__ == "__main__":
     current_articles = fetch_latest_articles()
-    previous_article_ids = load_previous_articles()
 
-    new_articles = get_new_articles(current_articles, previous_article_ids)
-    
-    if new_articles:
-        print(f"Found {len(new_articles)} new articles.")
-        asyncio.run(send_telegram_message(new_articles))
-        save_current_articles(current_articles)
+    if current_articles:
+        print(f"Found {len(current_articles)} articles.")
+        asyncio.run(send_telegram_message(current_articles))
+        save_current_articles(current_articles)  # 更新存储的文章列表
     else:
-        print("No new articles found.")
+        print("No articles found.")

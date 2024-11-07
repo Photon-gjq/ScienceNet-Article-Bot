@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import os
 from telegram import Bot
+import asyncio
 
 def fetch_latest_articles():
     # 指定要抓取的網頁 URL
@@ -65,20 +66,22 @@ def fetch_latest_articles():
     # 返回包含所有文章信息的列表
     return articles
 
-def send_telegram_message(articles):
+async def send_telegram_message(articles):
     bot_token = os.getenv('BOT_TOKEN')
     chat_id = os.getenv('CHAT_ID')
     
+    # 打印用于调试的 token 和 chat ID
     print(f"Debug - BOT_TOKEN: {bot_token}, CHAT_ID: {chat_id}")
 
     bot = Bot(token=bot_token)
     for article in articles:
         message = f"New Article: {article['title']}\nAuthor: {article['author']}\nLink: {article['link']}"
         try:
-            bot.send_message(chat_id=chat_id, text=message)
+            await bot.send_message(chat_id=chat_id, text=message)
             print(f"Message sent: {message}")
         except Exception as e:
-            print(f"Failed to send message: {e}, BOT_TOKEN: {bot_token}, CHAT_ID: {chat_id}")
+            print(f"Failed to send message: {e}")
+
 
 # 主程序入口
 if __name__ == "__main__":
@@ -87,6 +90,6 @@ if __name__ == "__main__":
         for article in articles:
             print(f"ID: {article['id']}, Title: {article['title']}, Author: {article['author']}, "
                   f"Views: {article['views']}, Comments: {article['comments']}, Date: {article['date']}")
-        send_telegram_message(articles)  # 確保這裡調用了函數
+        asyncio.run(send_telegram_message(articles))
     else:
         print("No articles found.")

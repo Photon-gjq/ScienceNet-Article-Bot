@@ -1,6 +1,5 @@
 import requests
 from bs4 import BeautifulSoup
-
 import os
 from telegram import Bot
 
@@ -48,6 +47,10 @@ def fetch_latest_articles():
         comments = cols[4].text.strip()
         date = cols[5].text.strip()
 
+        # 假設鏈接在第二列的 <a> 標籤中
+        link_tag = cols[1].find('a', href=True)
+        link = link_tag['href'] if link_tag else 'No link available'
+
         # 將提取的信息添加到文章列表
         articles.append({
             'id': article_id,
@@ -55,11 +58,24 @@ def fetch_latest_articles():
             'author': author,
             'views': views,
             'comments': comments,
-            'date': date
+            'date': date,
+            'link': link
         })
 
     # 返回包含所有文章信息的列表
     return articles
+
+def send_telegram_message(articles):
+    bot_token = os.getenv('BOT_TOKEN')
+    chat_id = os.getenv('CHAT_ID')
+    
+    bot = Bot(token=bot_token)
+    for article in articles:
+        message = f"New Article: {article['title']}\nAuthor: {article['author']}\nLink: {article['link']}"
+        try:
+            bot.send_message(chat_id=chat_id, text=message)
+        except Exception as e:
+            print(f"Failed to send message: {e}")
 
 # 主程序入口
 if __name__ == "__main__":
@@ -73,12 +89,3 @@ if __name__ == "__main__":
                   f"Views: {article['views']}, Comments: {article['comments']}, Date: {article['date']}")
     else:
         print("No articles found.")
-
-def send_telegram_message(articles):
-    bot_token = os.getenv('BOT_TOKEN')
-    chat_id = os.getenv('CHAT_ID')
-    
-    bot = Bot(token=bot_token)
-    for article in articles:
-        message = f"New Article: {article['title']}\nAuthor: {article['author']}\nLink: {article['link']}"
-        bot.send_message(chat_id=chat_id, text=message)

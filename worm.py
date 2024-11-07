@@ -75,7 +75,7 @@ async def send_telegram_message(articles):
     
     bot = Bot(token=bot_token)
     for article in articles:
-        message = f"New Article: {article['title']}\nAuthor: {article['author']}\nLink: {article['link']}"
+        message = f"新文章: {article['title']}\n作者: {article['author']}\n鏈結: {article['link']}"
         try:
             await bot.send_message(chat_id=chat_id, text=message)
             print(f"Message sent: {message}")
@@ -83,7 +83,7 @@ async def send_telegram_message(articles):
             print(f"Failed to send message: {e}")
 
 def load_previous_articles():
-    if os.path.exists(DATA_FILE):
+    if os.path.exists(DATA_FILE) and os.path.getsize(DATA_FILE) > 0:
         with open(DATA_FILE, 'r') as file:
             return set(json.load(file))
     return set()
@@ -95,6 +95,7 @@ def save_current_articles(articles):
 def get_new_articles(current_articles, previous_article_ids):
     return [article for article in current_articles if article['id'] not in previous_article_ids]
 
+# 主程序入口
 if __name__ == "__main__":
     current_articles = fetch_latest_articles()
     previous_article_ids = load_previous_articles()

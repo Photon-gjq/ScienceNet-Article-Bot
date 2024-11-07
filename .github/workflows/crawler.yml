@@ -5,8 +5,8 @@ on:
     branches:
       - main
   schedule:
-    - cron: '*/5 * * * *'  # 每五分鐘運行一次
-
+    - cron: '0 22 * * *'  # 每天晚上10点运行一次
+    
 jobs:
   run:
     runs-on: ubuntu-latest

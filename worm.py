@@ -1,8 +1,11 @@
 import requests
+import json
+import asyncio
 from bs4 import BeautifulSoup
 import os
 from telegram import Bot
-import asyncio
+
+DATA_FILE = 'previous_articles.json'
 
 def fetch_latest_articles():
     # 指定要抓取的網頁 URL
@@ -70,9 +73,6 @@ async def send_telegram_message(articles):
     bot_token = os.getenv('BOT_TOKEN')
     chat_id = os.getenv('CHAT_ID')
     
-    # 打印用于调试的 token 和 chat ID
-    print(f"Debug - BOT_TOKEN: {bot_token}, CHAT_ID: {chat_id}")
-
     bot = Bot(token=bot_token)
     for article in articles:
         message = f"New Article: {article['title']}\nAuthor: {article['author']}\nLink: {article['link']}"
@@ -82,14 +82,28 @@ async def send_telegram_message(articles):
         except Exception as e:
             print(f"Failed to send message: {e}")
 
+def load_previous_articles():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, 'r') as file:
+            return set(json.load(file))
+    return set()
 
-# 主程序入口
+def save_current_articles(articles):
+    with open(DATA_FILE, 'w') as file:
+        json.dump([article['id'] for article in articles], file)
+
+def get_new_articles(current_articles, previous_article_ids):
+    return [article for article in current_articles if article['id'] not in previous_article_ids]
+
 if __name__ == "__main__":
-    articles = fetch_latest_articles()
-    if articles:
-        for article in articles:
-            print(f"ID: {article['id']}, Title: {article['title']}, Author: {article['author']}, "
-                  f"Views: {article['views']}, Comments: {article['comments']}, Date: {article['date']}")
-        asyncio.run(send_telegram_message(articles))
+    current_articles = fetch_latest_articles()
+    previous_article_ids = load_previous_articles()
+
+    new_articles = get_new_articles(current_articles, previous_article_ids)
+    
+    if new_articles:
+        print(f"Found {len(new_articles)} new articles.")
+        asyncio.run(send_telegram_message(new_articles))
+        save_current_articles(current_articles)
     else:
-        print("No articles found.")
+        print("No new articles found.")

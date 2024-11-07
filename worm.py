@@ -73,3 +73,12 @@ if __name__ == "__main__":
                   f"Views: {article['views']}, Comments: {article['comments']}, Date: {article['date']}")
     else:
         print("No articles found.")
+
+def send_telegram_message(articles):
+    bot_token = os.getenv('BOT_TOKEN')
+    chat_id = os.getenv('CHAT_ID')
+    
+    bot = Bot(token=bot_token)
+    for article in articles:
+        message = f"New Article: {article['title']}\nAuthor: {article['author']}\nLink: {article['link']}"
+        bot.send_message(chat_id=chat_id, text=message)

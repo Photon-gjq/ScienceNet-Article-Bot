@@ -1,6 +1,9 @@
 import requests
 from bs4 import BeautifulSoup
 
+import os
+from telegram import Bot
+
 def fetch_latest_articles():
     # 指定要抓取的網頁 URL
     url = "https://blog.sciencenet.cn/blog.php?mod=type&type=7"

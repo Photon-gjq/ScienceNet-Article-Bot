@@ -1,8 +1,11 @@
 name: Run Telegram Bot
 
 on:
+  push:
+    branches:
+      - main
   schedule:
-    - cron: '*/5 * * * *'  # 每小時運行一次
+    - cron: '*/5 * * * *'  # 每五分鐘運行一次
 
 jobs:
   run:

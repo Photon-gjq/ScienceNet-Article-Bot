@@ -1,4 +1,4 @@
 # ScienceNet-Article-Bot
 This is a bot for articeles in science net. 
 
-This bot get the new articles in ScienceNet, in two 「科普集錦」 and 「觀點評述」 two parts. It will run everyday 10:00 pm to fetch the new articles by github action. Not official account. 
+This bot get the new articles in ScienceNet, in two 「科普集錦」 and 「觀點評述」 two parts. It will run every hour to fetch the new articles by github action. Not official account. 

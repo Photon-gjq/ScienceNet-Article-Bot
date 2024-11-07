@@ -79,13 +79,11 @@ def send_telegram_message(articles):
 
 # 主程序入口
 if __name__ == "__main__":
-    # 獲取最新的文章信息
     articles = fetch_latest_articles()
-    
-    # 檢查是否有文章，如果有則逐一打印
     if articles:
         for article in articles:
             print(f"ID: {article['id']}, Title: {article['title']}, Author: {article['author']}, "
                   f"Views: {article['views']}, Comments: {article['comments']}, Date: {article['date']}")
+        send_telegram_message(articles)  # 確保這裡調用了函數
     else:
         print("No articles found.")

@@ -5,7 +5,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: '0 * * * *'  # 每小時執行一次
+    - cron: '43 * * * *'  # 每小時執行一次，不選整點
 
 jobs:
   run:

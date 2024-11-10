@@ -97,7 +97,7 @@ if __name__ == "__main__":
     if new_articles:
         print(f"Found {len(new_articles)} new articles.")
         asyncio.run(send_telegram_message(new_articles))
-        save_current_articles(current_articles)
+        save_current_articles(previous_article_ids, new_articles)  # 传入两个参数
     else:
         print("No new articles found.")
 

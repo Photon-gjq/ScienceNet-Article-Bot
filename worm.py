@@ -77,9 +77,12 @@ def load_previous_articles():
             return set(json.load(file))
     return set()
 
-def save_current_articles(articles):
+def save_current_articles(previous_ids, new_articles):
+    # 合并旧的和新的文章 ID
+    updated_ids = previous_ids.union({article['id'] for article in new_articles})
+    
     with open(DATA_FILE, 'w') as file:
-        json.dump([article['id'] for article in articles], file)
+        json.dump(list(updated_ids), file)
 
 def get_new_articles(current_articles, previous_article_ids):
     return [article for article in current_articles if article['id'] not in previous_article_ids]

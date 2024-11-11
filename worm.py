@@ -64,7 +64,7 @@ async def send_telegram_message(articles):
     
     bot = Bot(token=bot_token)
     for article in articles:
-        message = f"新文章: {article['title']}\n作者: {article['author']}\n分類: {article['label']}\n鏈結: {article['link']}"
+        message = f"{article['title']}\n作者: {article['author']}\n分類: {article['label']}\n鏈結: {article['link']}"
         try:
             await bot.send_message(chat_id=chat_id, text=message)
             print(f"Message sent: {message}")

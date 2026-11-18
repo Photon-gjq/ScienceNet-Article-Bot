@@ -2,41 +2,100 @@ name: Run Telegram Bot
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+    paths:
+      - 'sciencenet_bot/**'
+      - 'tests/**'
+      - 'worm.py'
+      - 'requirements*'
+      - '.github/workflows/crawler.yml'
+  pull_request:
+    branches: [main]
   schedule:
-    - cron: '43 * * * *'  # 每小時執行一次，不選整點
+    - cron: '43 * * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'verify checks live access without sending; send delivers real articles'
+        required: true
+        type: choice
+        default: verify
+        options: [verify, send]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sciencenet-bot-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  run:
-    runs-on: ubuntu-latest
-
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: pip
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Run offline tests (no Telegram credentials)
+        run: python -m unittest discover -s tests -v
 
-    - name: Set up Python
-      uses: actions/setup-python@v3
-      with:
-        python-version: '3.9'
+  run:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: pip
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements.txt
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install requests beautifulsoup4 python-telegram-bot
+      # Code pushes and manual checks NEVER send subscriber messages.
+      - name: Verify live source and Telegram access without sending
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'verify')
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: python -m sciencenet_bot --dry-run --verify-telegram
 
-    - name: Run script
-      env:
-        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-        CHAT_ID: ${{ secrets.CHAT_ID }}
-      run: |
-        python worm.py
+      - name: Deliver real articles (at most five)
+        id: deliver
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'send')
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: python -m sciencenet_bot --max-messages 5
 
-    - name: Commit and push changes
-      run: |
-        git config --local user.name "github-actions[bot]"
-        git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        git diff --quiet && git diff --staged --quiet || git add previous_articles.json
-        git commit -m "Update previous_articles.json" || echo "No changes to commit"
-        git push
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Keep successful deliveries even if a later article failed to send.
+      - name: Persist delivery checkpoints
+        if: ${{ always() && (steps.deliver.outcome == 'success' || steps.deliver.outcome == 'failure') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -- previous_articles.json
+          if git diff --cached --quiet; then
+            echo "No delivery checkpoints changed."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Update delivered article IDs [skip ci]'
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            git pull --rebase origin main
+            sleep 2
+          done
+          echo 'Failed to persist delivery history.' >&2
+          exit 1

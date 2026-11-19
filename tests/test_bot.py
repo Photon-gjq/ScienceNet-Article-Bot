@@ -215,6 +215,82 @@ class TelegramTests(unittest.TestCase):
         ]
         self.assertEqual(methods, ["getMe", "getChat", "getChatMember"])
 
+    @patch("sciencenet_bot.telegram.time.sleep")
+    def test_verification_recovers_from_getme_502_without_sending(self, sleep):
+        self.client._session.post.side_effect = [
+            self.api_response(status=502, data={"ok": False, "error_code": 502}),
+            self.api_response({"id": 42}),
+            self.api_response({"type": "channel"}),
+            self.api_response({"status": "administrator", "can_post_messages": True}),
+        ]
+        self.client.verify()
+        methods = [
+            call.args[0].rsplit("/", 1)[-1] for call in self.client._session.post.call_args_list
+        ]
+        self.assertEqual(methods, ["getMe", "getMe", "getChat", "getChatMember"])
+        sleep.assert_called_once_with(2)
+
+    @patch("sciencenet_bot.telegram.time.sleep")
+    def test_read_checks_retry_html_gateway_errors_before_parsing(self, sleep):
+        for method in ("getMe", "getChat", "getChatMember"):
+            for code in (500, 502, 503, 504):
+                with self.subTest(method=method, code=code):
+                    error = Mock(status_code=code, json=Mock(side_effect=ValueError("HTML")))
+                    self.client._session.post.side_effect = [error, self.api_response({"id": 42})]
+                    self.assertEqual(self.client._call(method, {}), {"id": 42})
+                    error.json.assert_not_called()
+
+    @patch("sciencenet_bot.telegram.time.sleep")
+    def test_read_checks_retry_transient_api_error_in_json(self, sleep):
+        self.client._session.post.side_effect = [
+            self.api_response(data={"ok": False, "error_code": 502}),
+            self.api_response({"id": 42}),
+        ]
+        self.assertEqual(self.client._call("getMe", {}), {"id": 42})
+        sleep.assert_called_once_with(2)
+
+    @patch("sciencenet_bot.telegram.time.sleep")
+    def test_read_checks_retry_network_errors_without_leaking_token(self, sleep):
+        for error_type in (requests.Timeout, requests.ConnectionError):
+            with self.subTest(error_type=error_type):
+                self.client._session.post.side_effect = [
+                    error_type("https://api.telegram.org/bottest-token/getMe"),
+                    self.api_response({"id": 42}),
+                ]
+                with self.assertLogs("sciencenet_bot.telegram", level="WARNING") as logs:
+                    self.assertEqual(self.client._call("getMe", {}), {"id": 42})
+                self.assertNotIn("test-token", " ".join(logs.output))
+
+    @patch("sciencenet_bot.telegram.time.sleep")
+    def test_read_retry_limit_still_reports_persistent_failure(self, sleep):
+        self.client._session.post.return_value = self.api_response(
+            status=502, data={"ok": False, "error_code": 502}
+        )
+        with self.assertRaises(TelegramError):
+            self.client._call("getMe", {})
+        self.assertEqual(self.client._session.post.call_count, 3)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [2, 4])
+
+    @patch("sciencenet_bot.telegram.time.sleep")
+    def test_permanent_authentication_failure_is_not_retried(self, sleep):
+        self.client._session.post.return_value = self.api_response(
+            status=401, data={"ok": False, "error_code": 401}
+        )
+        with self.assertRaises(TelegramError):
+            self.client._call("getMe", {})
+        self.client._session.post.assert_called_once()
+        sleep.assert_not_called()
+
+    @patch("sciencenet_bot.telegram.time.sleep")
+    def test_ambiguous_send_502_is_not_retried(self, sleep):
+        self.client._session.post.return_value = self.api_response(
+            status=502, data={"ok": False, "error_code": 502}
+        )
+        with self.assertRaises(TelegramError):
+            self.client.send("article text")
+        self.client._session.post.assert_called_once()
+        sleep.assert_not_called()
+
     def test_channel_post_permission_is_required(self):
         self.client._session.post.side_effect = [
             self.api_response({"id": 42}),

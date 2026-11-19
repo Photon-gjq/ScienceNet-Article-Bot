@@ -1,8 +1,14 @@
 """Small Bot API client; never put token-bearing request URLs in logs."""
 
+import logging
 import time
 
 import requests
+
+LOG = logging.getLogger(__name__)
+READ_METHODS = frozenset({"getMe", "getChat", "getChatMember"})
+TRANSIENT_STATUS_CODES = frozenset({500, 502, 503, 504})
+MAX_ATTEMPTS = 3
 
 
 class TelegramError(RuntimeError):
@@ -24,20 +30,44 @@ class TelegramClient:
     def __exit__(self, *_):
         self._session.close()
 
+    def _retry_read(self, method: str, attempt: int, reason: str) -> bool:
+        if method not in READ_METHODS or attempt >= MAX_ATTEMPTS - 1:
+            return False
+        delay = 2 ** (attempt + 1)
+        LOG.warning(
+            "Telegram %s: %s; retrying read-only check in %ds (%d/%d)",
+            method,
+            reason,
+            delay,
+            attempt + 1,
+            MAX_ATTEMPTS - 1,
+        )
+        time.sleep(delay)
+        return True
+
     def _call(self, method: str, payload: dict) -> dict:
-        if self._read_only and method not in {"getMe", "getChat", "getChatMember"}:
+        if self._read_only and method not in READ_METHODS:
             raise TelegramError("Read-only verification cannot send or modify Telegram data")
-        for attempt in range(3):
+        for attempt in range(MAX_ATTEMPTS):
             try:
                 response = self._session.post(
                     self._base_url + method, json=payload, timeout=(10, 30)
                 )
             except requests.RequestException as exc:
+                if isinstance(
+                    exc, (requests.ConnectionError, requests.Timeout)
+                ) and self._retry_read(method, attempt, type(exc).__name__):
+                    continue
                 # A timed-out send may already have reached Telegram. Do not
                 # immediately retry an ambiguous request or expose its URL/token.
                 raise TelegramError(
                     f"Telegram {method}: network failure ({type(exc).__name__})"
                 ) from None
+            # Gateways may return an HTML error page rather than Bot API JSON.
+            if response.status_code in TRANSIENT_STATUS_CODES and self._retry_read(
+                method, attempt, f"HTTP {response.status_code}"
+            ):
+                continue
             try:
                 data = response.json()
             except ValueError:
@@ -54,7 +84,11 @@ class TelegramClient:
             code = data.get("error_code", response.status_code)
             if not isinstance(code, int):
                 code = response.status_code
-            if code == 429 and attempt < 2:
+            if code in TRANSIENT_STATUS_CODES and self._retry_read(
+                method, attempt, f"API error {code}"
+            ):
+                continue
+            if code == 429 and attempt < MAX_ATTEMPTS - 1:
                 parameters = data.get("parameters")
                 delay = parameters.get("retry_after") if isinstance(parameters, dict) else None
                 if isinstance(delay, (int, float)) and 0 < delay <= 120:
